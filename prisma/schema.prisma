@@ -18,4 +18,112 @@ model User {
   email     String   @unique
   name      String?
   createdAt DateTime @default(now())
+
+  memories  Memory[]
+  spaces    Space[]
 }
+
+model Memory {
+  id            String   @id @default(uuid())
+  userId        String
+
+  type          String   // pdf | image | video | text | webpage
+  title         String?
+  summary       String?
+  extractedText String?
+  sourceUrl     String?
+
+  status        String   @default("processing") // processing | ready | failed
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user          User          @relation(fields: [userId], references: [id])
+  uploads       Upload[]
+  extractions   Extraction[]
+  embeddings    Embedding[]
+  tags          MemoryTag[]
+  spaces        SpaceMemory[]
+}
+
+model Upload {
+  id        String   @id @default(uuid())
+  memoryId  String
+
+  fileUrl   String
+  fileType  String   // pdf | image | video | text
+  mimeType  String?
+  fileSize  Int
+
+  createdAt DateTime @default(now())
+
+  memory    Memory @relation(fields: [memoryId], references: [id])
+}
+
+model Extraction {
+  id              String   @id @default(uuid())
+  memoryId        String
+
+  extractionType  String   // ocr | pdf_text | transcript | vision_summary
+  content         String
+  confidence      Float?
+
+  createdAt       DateTime @default(now())
+
+  memory          Memory @relation(fields: [memoryId], references: [id])
+}
+
+model Embedding {
+  id         String   @id @default(uuid())
+  memoryId   String
+
+  chunkIndex Int
+  chunkText  String
+  vector     Bytes   // pgvector upgrade later
+  modelName  String?
+
+  createdAt  DateTime @default(now())
+
+  memory     Memory @relation(fields: [memoryId], references: [id])
+}
+
+model Tag {
+  id    String @id @default(uuid())
+  name  String @unique
+
+  memories MemoryTag[]
+}
+
+model MemoryTag {
+  memoryId String
+  tagId    String
+
+  memory   Memory @relation(fields: [memoryId], references: [id])
+  tag      Tag    @relation(fields: [tagId], references: [id])
+
+  @@id([memoryId, tagId])
+}
+
+model Space {
+  id          String   @id @default(uuid())
+  userId      String
+
+  name        String
+  description String?
+
+  createdAt   DateTime @default(now())
+
+  user        User @relation(fields: [userId], references: [id])
+  memories    SpaceMemory[]
+}
+
+model SpaceMemory {
+  spaceId   String
+  memoryId  String
+
+  space     Space  @relation(fields: [spaceId], references: [id])
+  memory    Memory @relation(fields: [memoryId], references: [id])
+
+  @@id([spaceId, memoryId])
+}
+

@@ -10,7 +10,6 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 model User {
@@ -32,6 +31,8 @@ model Memory {
   summary       String?
   extractedText String?
   sourceUrl     String?
+
+  contentHash   String @unique
 
   status        String   @default("processing") // processing | ready | failed
 

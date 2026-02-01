@@ -1,5 +1,18 @@
+aiofiles>=24.1.0
 fastapi==0.115.6
+bcrypt>=4.0.0
+python-jose[cryptography]>=3.3.0
+python-multipart>=0.0.9
 uvicorn[standard]==0.34.0
-prisma==0.16.1
+prisma==0.15.0
 python-dotenv==1.0.1
-pydantic==2.10.6
+pydantic[email]>=2.12.0
+supabase>=2.10.0
+# Phase 3: extraction (PDF, OCR, transcription, summary, tags)
+pymupdf>=1.25.0
+pytesseract>=0.3.10
+Pillow>=10.0.0
+google-genai>=1.0.0
+httpx>=0.27.0
+beautifulsoup4>=4.12.0
+beautifulsoup4>=4.12.0

@@ -6,7 +6,7 @@ from fastapi.responses import FileResponse, PlainTextResponse
 from prisma import Prisma
 
 from app.config import LOCAL_STORAGE_PATH, STORAGE_BACKEND
-from app.routers import auth, memories, uploads, search
+from app.routers import auth, chat, chats, memories, uploads, search
 
 # Configure logging
 logging.basicConfig(
@@ -50,6 +50,8 @@ app.include_router(auth.router)
 app.include_router(memories.router)
 app.include_router(uploads.router)
 app.include_router(search.router)
+app.include_router(chat.router)
+app.include_router(chats.router)
 
 
 @app.get("/")

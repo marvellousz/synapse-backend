@@ -23,6 +23,7 @@ model User {
 
   memories  Memory[]
   spaces    Space[]
+  chats    Chat[]
 }
 
 model Memory {
@@ -129,5 +130,26 @@ model SpaceMemory {
   memory    Memory @relation(fields: [memoryId], references: [id])
 
   @@id([spaceId, memoryId])
+}
+
+model Chat {
+  id        String   @id @default(uuid())
+  userId    String
+  title     String   @default("New chat")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user     User          @relation(fields: [userId], references: [id])
+  messages ChatMessage[]
+}
+
+model ChatMessage {
+  id        String   @id @default(uuid())
+  chatId    String
+  role      String   // user | assistant
+  content   String
+  createdAt DateTime @default(now())
+
+  chat Chat @relation(fields: [chatId], references: [id], onDelete: Cascade)
 }
 

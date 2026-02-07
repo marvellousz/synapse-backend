@@ -41,6 +41,10 @@ class ChatOut(BaseModel):
     messages: list[MessageOut]
 
 
+class ChatUpdate(BaseModel):
+    title: str = Field(..., min_length=1, max_length=200)
+
+
 class SendMessageIn(BaseModel):
     message: str = Field(..., min_length=1)
 
@@ -108,6 +112,30 @@ async def get_chat(
             MessageOut(id=m.id, role=m.role, content=m.content, createdAt=m.createdAt.isoformat())
             for m in sorted(chat.messages, key=lambda x: x.createdAt)
         ],
+    )
+
+
+@router.patch("/{chat_id}", response_model=ChatListItem)
+async def update_chat(
+    chat_id: str,
+    body: ChatUpdate,
+    current_user: User = Depends(get_current_user),
+) -> ChatListItem:
+    """Update a chat (e.g. title)."""
+    chat = await PrismaChat.prisma().find_first(
+        where={"id": chat_id, "userId": current_user.id},
+    )
+    if not chat:
+        raise HTTPException(status_code=404, detail="Chat not found")
+    updated = await PrismaChat.prisma().update(
+        where={"id": chat_id},
+        data={"title": body.title.strip()[:200]},
+    )
+    return ChatListItem(
+        id=updated.id,
+        title=updated.title,
+        createdAt=updated.createdAt.isoformat(),
+        updatedAt=updated.updatedAt.isoformat(),
     )
 
 

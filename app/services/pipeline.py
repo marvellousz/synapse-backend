@@ -18,6 +18,7 @@ from app.services.extraction.ocr import extract_text_from_image
 from app.services.extraction.pdf import extract_text_from_pdf
 from app.services.extraction.vision import describe_image
 from app.services.extraction.webpage import extract_webpage_content
+from app.services.extraction.youtube import extract_youtube_content, is_youtube_url
 from app.services.extraction.summary import generate_summary as llm_summary
 from app.services.extraction.tags import generate_tags as llm_tags
 from app.services.extraction.transcription import transcribe_audio
@@ -48,19 +49,32 @@ async def run_extraction_pipeline(memory_id: str) -> None:
         )
         all_text_parts: list[str] = []
         if memory.sourceUrl and (memory.sourceUrl.startswith("http://") or memory.sourceUrl.startswith("https://")):
-            text, _ = extract_webpage_content(memory.sourceUrl)
-            if text:
-                await PrismaExtraction.prisma().create(
-                    data={
-                        "memoryId": memory_id,
-                        "extractionType": "webpage",
-                        "content": text[:500_000],
-                        "confidence": None,
-                    }
-                )
-                all_text_parts.append(text)
-        # For webpage type: only process the URL, not uploads
-        if memory.type != "webpage":
+            if memory.type == "youtube" and is_youtube_url(memory.sourceUrl):
+                text, _ = extract_youtube_content(memory.sourceUrl)
+                if text:
+                    await PrismaExtraction.prisma().create(
+                        data={
+                            "memoryId": memory_id,
+                            "extractionType": "youtube_transcript",
+                            "content": text[:500_000],
+                            "confidence": None,
+                        }
+                    )
+                    all_text_parts.append(text)
+            elif memory.type == "webpage":
+                text, _ = extract_webpage_content(memory.sourceUrl)
+                if text:
+                    await PrismaExtraction.prisma().create(
+                        data={
+                            "memoryId": memory_id,
+                            "extractionType": "webpage",
+                            "content": text[:500_000],
+                            "confidence": None,
+                        }
+                    )
+                    all_text_parts.append(text)
+        # For webpage/youtube type: only process the URL, not uploads
+        if memory.type not in ("webpage", "youtube"):
             for upload in memory.uploads:
                 try:
                     data = await fetch_file_bytes(upload.fileUrl)
@@ -181,7 +195,7 @@ async def run_extraction_pipeline(memory_id: str) -> None:
                                         "chunkIndex": chunk["chunkIndex"],
                                         "chunkText": chunk["chunkText"][:5000],  # Limit chunk text storage
                                         "vector": vector_str,  # Store as JSON string
-                                        "modelName": "text-embedding-004",
+                                        "modelName": "gemini-embedding-001",
                                     }
                                 )
                                 embeddings_created += 1

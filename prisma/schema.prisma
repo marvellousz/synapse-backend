@@ -29,7 +29,7 @@ model Memory {
   id            String   @id @default(uuid())
   userId        String
 
-  type          String   // pdf | image | video | text | webpage
+  type          String   // pdf | image | video | text | webpage | youtube
   title         String?
   summary       String?
   extractedText String?

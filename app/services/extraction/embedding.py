@@ -9,12 +9,12 @@ import logging
 from typing import Optional
 
 from app.config import GEMINI_API_KEY
-from app.services.extraction.gemini_client import get_client
+from app.services.extraction.gemini_client import get_embedding_client
 
 logger = logging.getLogger(__name__)
 
-# Embedding model from Google
-EMBEDDING_MODEL = "text-embedding-004"
+# Embedding model from Google (text-embedding-004 is deprecated; use gemini-embedding-001)
+EMBEDDING_MODEL = "gemini-embedding-001"
 
 # Cache for embeddings to avoid regenerating
 _embedding_cache: dict[str, list[float]] = {}
@@ -38,18 +38,20 @@ def generate_embedding(text: str) -> Optional[list[float]]:
     if cache_key in _embedding_cache:
         return _embedding_cache[cache_key]
 
-    client = get_client()
+    client = get_embedding_client()
     if not client or not GEMINI_API_KEY:
         logger.warning("Gemini client not available for embeddings")
         return None
 
     try:
         from google import genai
+        from google.genai import types
 
-        # Generate embedding using Google's API
+        # Generate embedding using Google's API (768 dims for compatibility with existing stored embeddings)
         response = client.models.embed_content(
             model=EMBEDDING_MODEL,
             contents=text.strip(),
+            config=types.EmbedContentConfig(output_dimensionality=768),
         )
 
         # Extract embedding from response (Gemini API returns ContentEmbedding objects)

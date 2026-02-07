@@ -61,7 +61,7 @@ async def create_memory(
 @router.get("", response_model=list[MemoryResponse])
 async def list_memories(
     current_user: Annotated[User, Depends(get_current_user)],
-    type: Optional[str] = Query(None, description="Filter by type (pdf, image, video, text, webpage)"),
+    type: Optional[str] = Query(None, description="Filter by type (pdf, image, video, text, webpage, youtube)"),
     status: Optional[str] = Query(None, description="Filter by status"),
     skip: int = Query(0, ge=0),
     take: int = Query(20, ge=1, le=100),

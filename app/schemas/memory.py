@@ -5,7 +5,7 @@ from typing import Literal, Optional
 
 from pydantic import BaseModel, Field
 
-MemoryType = Literal["pdf", "image", "video", "text", "webpage"]
+MemoryType = Literal["pdf", "image", "video", "text", "webpage", "youtube"]
 MemoryStatus = Literal["processing", "ready", "failed"]
 
 

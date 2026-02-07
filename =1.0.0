@@ -1,0 +1,14 @@
+Collecting youtube-transcript-api
+  Downloading youtube_transcript_api-1.2.4-py3-none-any.whl.metadata (24 kB)
+Collecting defusedxml<0.8.0,>=0.7.1 (from youtube-transcript-api)
+  Downloading defusedxml-0.7.1-py2.py3-none-any.whl.metadata (32 kB)
+Requirement already satisfied: requests in ./.venv/lib/python3.14/site-packages (from youtube-transcript-api) (2.32.5)
+Requirement already satisfied: charset_normalizer<4,>=2 in ./.venv/lib/python3.14/site-packages (from requests->youtube-transcript-api) (3.4.4)
+Requirement already satisfied: idna<4,>=2.5 in ./.venv/lib/python3.14/site-packages (from requests->youtube-transcript-api) (3.11)
+Requirement already satisfied: urllib3<3,>=1.21.1 in ./.venv/lib/python3.14/site-packages (from requests->youtube-transcript-api) (2.6.3)
+Requirement already satisfied: certifi>=2017.4.17 in ./.venv/lib/python3.14/site-packages (from requests->youtube-transcript-api) (2026.1.4)
+Downloading youtube_transcript_api-1.2.4-py3-none-any.whl (485 kB)
+Downloading defusedxml-0.7.1-py2.py3-none-any.whl (25 kB)
+Installing collected packages: defusedxml, youtube-transcript-api
+
+Successfully installed defusedxml-0.7.1 youtube-transcript-api-1.2.4

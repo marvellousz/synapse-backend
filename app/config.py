@@ -25,6 +25,13 @@ SUPABASE_BUCKET = os.getenv("SUPABASE_UPLOAD_BUCKET", "uploads")
 # File size limits (bytes)
 MAX_FILE_SIZE_PDF = int(os.getenv("MAX_FILE_SIZE_PDF", 20 * 1024 * 1024))  # 20 MB
 MAX_FILE_SIZE_IMAGE = int(os.getenv("MAX_FILE_SIZE_IMAGE", 10 * 1024 * 1024))  # 10 MB
+# Gemini guidance:
+# - Inline media in requests: keep small (video-understanding docs show <20 MB)
+# - Files API upload (free tier): up to 2 GB per file
+GEMINI_INLINE_VIDEO_MAX_BYTES = int(os.getenv("GEMINI_INLINE_VIDEO_MAX_BYTES", 20 * 1024 * 1024))
+GEMINI_FILES_API_MAX_FILE_BYTES = int(os.getenv("GEMINI_FILES_API_MAX_FILE_BYTES", 2 * 1024 * 1024 * 1024))
+# Keep a conservative default here because current upload endpoint reads file bytes into memory.
+# Can be increased via env var (still capped by GEMINI_FILES_API_MAX_FILE_BYTES in validation).
 MAX_FILE_SIZE_VIDEO = int(os.getenv("MAX_FILE_SIZE_VIDEO", 50 * 1024 * 1024))  # 50 MB
 MAX_FILE_SIZE_TEXT = int(os.getenv("MAX_FILE_SIZE_TEXT", 1 * 1024 * 1024))  # 1 MB
 

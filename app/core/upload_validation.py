@@ -4,6 +4,7 @@ import mimetypes
 from typing import Literal
 
 from app.config import (
+    GEMINI_FILES_API_MAX_FILE_BYTES,
     MAX_FILE_SIZE_IMAGE,
     MAX_FILE_SIZE_PDF,
     MAX_FILE_SIZE_TEXT,
@@ -69,6 +70,9 @@ def detect_file_type(filename: str, content_type: str | None) -> UploadFileType 
 
 def get_max_size(file_type: UploadFileType) -> int:
     """Return max allowed size in bytes for the given file type."""
+    if file_type == "video":
+        # Keep project limit bounded by Gemini Files API max file size.
+        return min(MAX_FILE_SIZE_VIDEO, GEMINI_FILES_API_MAX_FILE_BYTES)
     return MAX_SIZE_BY_TYPE.get(file_type, MAX_FILE_SIZE_TEXT)
 
 
@@ -89,5 +93,12 @@ def validate_upload(
         )
     max_size = get_max_size(file_type)
     if size > max_size:
+        if file_type == "video":
+            project_limit_mb = max_size // (1024 * 1024)
+            gemini_limit_mb = GEMINI_FILES_API_MAX_FILE_BYTES // (1024 * 1024)
+            return file_type, (
+                f"File too large. Max size for video: {project_limit_mb} MB "
+                f"(Gemini Files API max: {gemini_limit_mb} MB)."
+            )
         return file_type, f"File too large. Max size for {file_type}: {max_size // (1024*1024)} MB"
     return file_type, None

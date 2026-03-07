@@ -63,8 +63,11 @@ async def upload_files(
         if err or file_type is None:
             raise HTTPException(status_code=400, detail=err or "Unsupported file type")
         unique_id = uuid.uuid4().hex[:12]
-        key = storage.key_for_memory(memory_id, upload_file.filename, unique_id)
-        file_url = await storage.upload(content, key, content_type=content_type)
+        key = storage.key_for_user_memory(current_user.id, memory_id, upload_file.filename, unique_id)
+        try:
+            file_url = await storage.upload(content, key, content_type=content_type)
+        except Exception as e:
+            raise HTTPException(status_code=502, detail=f"Storage upload failed: {e}") from e
         upload_record = await PrismaUpload.prisma().create(
             data={
                 "memoryId": memory_id,
@@ -119,8 +122,12 @@ async def delete_upload(
         raise HTTPException(status_code=404, detail="Upload not found")
     file_url = upload.fileUrl
     key = _url_to_storage_key(file_url)
-    if key:
+    if not key:
+        raise HTTPException(status_code=500, detail="Could not resolve storage key for upload")
+    try:
         await storage.delete(key)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Storage delete failed: {e}") from e
     await PrismaUpload.prisma().delete(where={"id": upload_id})
 
 

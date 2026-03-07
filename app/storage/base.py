@@ -25,6 +25,19 @@ class StorageBackend(ABC):
         ...
 
     def key_for_memory(self, memory_id: str, filename: str, unique_id: str) -> str:
-        """Build storage key: memory_id/unique_id_filename to avoid collisions."""
+        """Build legacy storage key: memory_id/unique_id_filename to avoid collisions."""
         safe_name = "".join(c for c in filename if c.isalnum() or c in "._-")[:64]
         return f"{memory_id}/{unique_id}_{safe_name}"
+
+    def key_for_user_memory(
+        self,
+        user_id: str,
+        memory_id: str,
+        filename: str,
+        unique_id: str,
+    ) -> str:
+        """Build user-scoped storage key: user_id/memory_id/unique_id_filename."""
+        safe_name = "".join(c for c in filename if c.isalnum() or c in "._-")[:64]
+        safe_user = "".join(c for c in user_id if c.isalnum() or c in "-_")[:64]
+        safe_memory = "".join(c for c in memory_id if c.isalnum() or c in "-_")[:64]
+        return f"{safe_user}/{safe_memory}/{unique_id}_{safe_name}"

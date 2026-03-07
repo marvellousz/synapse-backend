@@ -11,7 +11,7 @@ except ImportError:
     pass
 
 # Storage: "local" or "supabase"
-STORAGE_BACKEND = os.getenv("STORAGE_BACKEND", "local")
+STORAGE_BACKEND = os.getenv("STORAGE_BACKEND", "supabase")
 
 # Local storage path (used when STORAGE_BACKEND=local)
 LOCAL_STORAGE_PATH = Path(os.getenv("LOCAL_STORAGE_PATH", "uploads")).resolve()

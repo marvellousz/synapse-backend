@@ -171,13 +171,23 @@ async def delete_memory(
     )
     if existing is None or existing.userId != current_user.id:
         raise HTTPException(status_code=404, detail="Memory not found")
+    storage_delete_failures = 0
     for upload in existing.uploads:
         key = _url_to_storage_key(upload.fileUrl)
-        if key:
-            try:
-                await storage.delete(key)
-            except Exception:
-                pass
+        if not key:
+            storage_delete_failures += 1
+            continue
+        try:
+            await storage.delete(key)
+        except Exception as e:
+            # Keep counting failures; details are surfaced in the final HTTP error.
+            _ = e
+            storage_delete_failures += 1
+    if storage_delete_failures:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to delete {storage_delete_failures} file(s) from storage",
+        )
     await PrismaUpload.prisma().delete_many(where={"memoryId": memory_id})
     await Extraction.prisma().delete_many(where={"memoryId": memory_id})
     await Embedding.prisma().delete_many(where={"memoryId": memory_id})

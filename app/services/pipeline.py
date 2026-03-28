@@ -21,6 +21,7 @@ from app.services.extraction.webpage import extract_webpage_content
 from app.services.extraction.youtube import extract_youtube_content, is_youtube_url
 from app.services.extraction.summary import generate_summary as llm_summary
 from app.services.extraction.tags import generate_tags as llm_tags
+from app.services.extraction.category import generate_category as llm_category
 from app.services.extraction.transcription import transcribe_audio
 from app.services.file_fetcher import fetch_file_bytes
 
@@ -151,6 +152,13 @@ async def run_extraction_pipeline(memory_id: str) -> None:
         if GEMINI_API_KEY and combined_text:
             tag_names = llm_tags(combined_text, memory.title)
         
+        # Phase 2.5: Generate Category
+        category = memory.category
+        if GEMINI_API_KEY and combined_text:
+            category = llm_category(combined_text, memory.title)
+        if not category and combined_text:
+            category = "Miscellaneous"
+        
         # Phase 4: Generate embeddings for semantic search
         embeddings_created = 0
         if GEMINI_API_KEY and combined_text:
@@ -212,6 +220,7 @@ async def run_extraction_pipeline(memory_id: str) -> None:
             data={
                 "extractedText": combined_text[:1_000_000] if combined_text else memory.extractedText,
                 "summary": summary,
+                "category": category,
                 "status": "ready",
             },
         )

@@ -38,6 +38,7 @@ model Memory {
 
   contentHash   String @unique
 
+  category      String?  // generic category (e.g. Work, Personal, etc)
   status        String   @default("processing") // processing | ready | failed
 
   createdAt     DateTime @default(now())

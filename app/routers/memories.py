@@ -25,6 +25,7 @@ def _to_response(m: PrismaMemory, tag_names: Optional[list[str]] = None) -> Memo
         extractedText=m.extractedText,
         sourceUrl=m.sourceUrl,
         contentHash=m.contentHash,
+        category=m.category,
         status=m.status,
         createdAt=m.createdAt,
         updatedAt=m.updatedAt,
@@ -48,6 +49,7 @@ async def create_memory(
             "summary": body.summary,
             "extractedText": body.extractedText,
             "sourceUrl": body.sourceUrl,
+            "category": body.category,
             "status": body.status,
         }
     )
@@ -63,6 +65,7 @@ async def list_memories(
     current_user: Annotated[User, Depends(get_current_user)],
     type: Optional[str] = Query(None, description="Filter by type (pdf, image, video, text, webpage, youtube)"),
     status: Optional[str] = Query(None, description="Filter by status"),
+    category: Optional[str] = Query(None, description="Filter by category"),
     skip: int = Query(0, ge=0),
     take: int = Query(20, ge=1, le=100),
 ) -> list[MemoryResponse]:
@@ -72,6 +75,8 @@ async def list_memories(
         where["type"] = type
     if status is not None:
         where["status"] = status
+    if category is not None:
+        where["category"] = category
     memories = await PrismaMemory.prisma().find_many(
         where=where,
         skip=skip,
@@ -79,6 +84,64 @@ async def list_memories(
         order={"createdAt": "desc"},
     )
     return [_to_response(m) for m in memories]
+
+
+@router.get("/graph")
+async def get_memory_graph(
+    current_user: Annotated[User, Depends(get_current_user)],
+) -> dict:
+    """
+    Returns nodes (memories) and edges (shared tags) for the knowledge graph.
+    """
+    memories = await PrismaMemory.prisma().find_many(
+        where={"userId": current_user.id},
+        include={"tags": {"include": {"tag": True}}},
+    )
+    
+    nodes = []
+    for m in memories:
+        nodes.append({
+            "id": m.id,
+            "title": m.title or "Untitled",
+            "type": m.type,
+            "category": m.category or "Miscellaneous",
+            "tags": [mt.tag.name for mt in m.tags] if m.tags else [],
+        })
+        
+    # Create links based on shared tags
+    links = []
+    for i in range(len(nodes)):
+        for j in range(i + 1, len(nodes)):
+            shared_tags = set(nodes[i]["tags"]) & set(nodes[j]["tags"])
+            if shared_tags:
+                links.append({
+                    "source": nodes[i]["id"],
+                    "target": nodes[j]["id"],
+                    "value": len(shared_tags),
+                    "sharedTags": list(shared_tags),
+                })
+                
+    return {"nodes": nodes, "links": links}
+
+
+@router.get("/categories")
+async def get_memory_categories(
+    current_user: Annotated[User, Depends(get_current_user)],
+) -> list[dict]:
+    """
+    Returns a list of categories and the number of memories in each.
+    """
+    # Prisma group_by is not available in all versions, let's use a manual approach or find_many
+    memories = await PrismaMemory.prisma().find_many(
+        where={"userId": current_user.id},
+    )
+    
+    counts: dict[str, int] = {}
+    for m in memories:
+        cat = m.category or "Miscellaneous"
+        counts[cat] = counts.get(cat, 0) + 1
+        
+    return [{"category": k, "count": v} for k, v in counts.items()]
 
 
 @router.get("/{memory_id}", response_model=MemoryResponse)
@@ -118,6 +181,8 @@ async def update_memory(
         prisma_data["extractedText"] = data["extractedText"]
     if "sourceUrl" in data:
         prisma_data["sourceUrl"] = data["sourceUrl"]
+    if "category" in data:
+        prisma_data["category"] = data["category"]
     if "status" in data:
         prisma_data["status"] = data["status"]
     memory = await PrismaMemory.prisma().update(

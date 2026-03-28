@@ -18,6 +18,7 @@ class MemoryCreate(BaseModel):
     summary: Optional[str] = None
     extractedText: Optional[str] = None
     sourceUrl: Optional[str] = None
+    category: Optional[str] = None
     status: MemoryStatus = Field(default="processing", description="Processing status")
 
 
@@ -28,6 +29,7 @@ class MemoryUpdate(BaseModel):
     summary: Optional[str] = None
     extractedText: Optional[str] = None
     sourceUrl: Optional[str] = None
+    category: Optional[str] = None
     status: Optional[MemoryStatus] = None
 
 
@@ -42,6 +44,7 @@ class MemoryResponse(BaseModel):
     extractedText: Optional[str] = None
     sourceUrl: Optional[str] = None
     contentHash: str
+    category: Optional[str] = None
     status: str
     createdAt: datetime
     updatedAt: datetime

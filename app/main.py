@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, PlainTextResponse
 from prisma import Prisma
 
-from app.config import LOCAL_STORAGE_PATH, STORAGE_BACKEND
+from app.config import CORS_EXTRA_ORIGINS, LOCAL_STORAGE_PATH, STORAGE_BACKEND
 from app.routers import auth, chat, chats, memories, uploads, search
 
 # Configure logging
@@ -37,17 +37,21 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+_DEFAULT_CORS_ORIGINS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:3001",
+    "http://127.0.0.1:3001",
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "https://synapse-frontend-gamma.vercel.app",
+]
+# Dedupe while preserving order (env CORS_ORIGINS appended for previews/staging)
+_cors_origins = list(dict.fromkeys(_DEFAULT_CORS_ORIGINS + CORS_EXTRA_ORIGINS))
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "http://localhost:3001",
-        "http://127.0.0.1:3001",
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "https://synapse-frontend-gamma.vercel.app",
-    ],
+    allow_origins=_cors_origins,
     allow_origin_regex=r"^chrome-extension://.*",
     allow_credentials=True,
     allow_methods=["*"],

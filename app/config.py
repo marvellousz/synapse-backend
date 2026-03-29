@@ -43,6 +43,13 @@ JWT_SECRET = os.getenv("JWT_SECRET", "change-me-in-production")
 JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
 JWT_EXPIRE_MINUTES = int(os.getenv("JWT_EXPIRE_MINUTES", "10080"))  # 7 days
 
+# Frontend URL for email action links
+FRONTEND_BASE_URL = os.getenv("FRONTEND_BASE_URL", "http://localhost:3000").rstrip("/")
+
+# Resend email settings
+RESEND_API_KEY = os.getenv("RESEND_API_KEY", "").strip()
+RESEND_FROM_EMAIL = os.getenv("RESEND_FROM_EMAIL", "onboarding@resend.dev").strip()
+
 # AI extraction (Phase 3) — Gemini
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 PROCESSING_ENABLED = os.getenv("PROCESSING_ENABLED", "true").lower() in ("true", "1", "yes")

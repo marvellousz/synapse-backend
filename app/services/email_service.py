@@ -1,0 +1,102 @@
+"""Email delivery helpers using Resend HTTP API."""
+
+import logging
+from html import escape
+
+import httpx
+
+from app.config import RESEND_API_KEY, RESEND_FROM_EMAIL
+
+logger = logging.getLogger(__name__)
+
+RESEND_API_URL = "https://api.resend.com/emails"
+
+
+def _render_shell(*, title: str, intro: str, cta_label: str, cta_url: str, note: str) -> str:
+    safe_title = escape(title)
+    safe_intro = escape(intro)
+    safe_cta_label = escape(cta_label)
+    safe_note = escape(note)
+    safe_url = escape(cta_url, quote=True)
+
+    return f"""
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>{safe_title}</title>
+    </head>
+    <body style="margin:0;padding:0;background:#f4f4f5;font-family:'Segoe UI',Arial,sans-serif;color:#111827;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f5;padding:28px 12px;">
+            <tr>
+                <td align="center">
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:620px;">
+                        <tr>
+                            <td style="padding:0 0 10px 0;">
+                                <span style="display:inline-block;background:#ffffff;border:2px solid #111827;padding:7px 12px;font-size:11px;letter-spacing:1.2px;font-weight:800;text-transform:uppercase;">synapse</span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="background:#ffffff;border:3px solid #111827;box-shadow:8px 8px 0 #111827;padding:28px;">
+                                <h1 style="margin:0 0 10px 0;font-size:28px;line-height:1.2;letter-spacing:0.2px;">{safe_title}</h1>
+                                <p style="margin:0 0 22px 0;font-size:16px;line-height:1.6;color:#374151;">{safe_intro}</p>
+                                <a href="{safe_url}" style="display:inline-block;background:#4f46e5;color:#ffffff;text-decoration:none;font-weight:800;letter-spacing:0.5px;text-transform:uppercase;padding:14px 18px;border:2px solid #111827;box-shadow:5px 5px 0 #111827;">
+                                    {safe_cta_label}
+                                </a>
+                                <p style="margin:22px 0 8px 0;font-size:13px;line-height:1.6;color:#4b5563;">{safe_note}</p>
+                                <p style="margin:0;font-size:12px;line-height:1.6;color:#6b7280;word-break:break-all;">
+                                    button not working? copy this link:<br />
+                                    <a href="{safe_url}" style="color:#4f46e5;">{safe_url}</a>
+                                </p>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+    </body>
+</html>
+""".strip()
+
+
+def build_verify_email_html(*, verify_url: str) -> str:
+    return _render_shell(
+        title="verify your synapse email",
+        intro="you are one click away from unlocking your second brain.",
+        cta_label="verify email",
+        cta_url=verify_url,
+        note="this verification link expires in 24 hours.",
+    )
+
+
+def build_reset_password_email_html(*, reset_url: str) -> str:
+    return _render_shell(
+        title="reset your synapse password",
+        intro="got locked out? no stress. use the button below to set a new password.",
+        cta_label="reset password",
+        cta_url=reset_url,
+        note="this reset link expires in 24 hours.",
+    )
+
+
+async def send_email(*, to_email: str, subject: str, html: str) -> None:
+    """Send an email via Resend. No-op if Resend is not configured."""
+    if not RESEND_API_KEY:
+        logger.warning("RESEND_API_KEY is not set; skipping outgoing email to %s", to_email)
+        return
+
+    payload = {
+        "from": RESEND_FROM_EMAIL,
+        "to": [to_email],
+        "subject": subject,
+        "html": html,
+    }
+    headers = {
+        "Authorization": f"Bearer {RESEND_API_KEY}",
+        "Content-Type": "application/json",
+    }
+
+    async with httpx.AsyncClient(timeout=15.0) as client:
+        response = await client.post(RESEND_API_URL, headers=headers, json=payload)
+        response.raise_for_status()

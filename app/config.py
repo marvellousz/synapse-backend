@@ -48,3 +48,6 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 PROCESSING_ENABLED = os.getenv("PROCESSING_ENABLED", "true").lower() in ("true", "1", "yes")
 # Max text length to send to LLM for summary/tags (chars)
 EXTRACTION_SUMMARY_MAX_CHARS = int(os.getenv("EXTRACTION_SUMMARY_MAX_CHARS", "12000"))
+
+# OCR: optional explicit path to Tesseract binary (useful on Windows)
+TESSERACT_CMD = os.getenv("TESSERACT_CMD", "").strip()

@@ -3,12 +3,18 @@
 import io
 from typing import Optional
 
+from app.config import TESSERACT_CMD
+
 try:
     import pytesseract
     from PIL import Image
 except ImportError:
     pytesseract = None
     Image = None
+
+
+if pytesseract is not None and TESSERACT_CMD:
+    pytesseract.pytesseract.tesseract_cmd = TESSERACT_CMD
 
 
 def extract_text_from_image(data: bytes) -> tuple[str, Optional[float]]:

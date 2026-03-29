@@ -46,6 +46,7 @@ app.add_middleware(
         "http://127.0.0.1:3001",
         "http://localhost:5173",
         "http://127.0.0.1:5173",
+        "https://gamma.vercel1.app",
     ],
     allow_origin_regex=r"^chrome-extension://.*",
     allow_credentials=True,

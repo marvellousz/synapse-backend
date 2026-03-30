@@ -24,9 +24,17 @@ prisma = Prisma(auto_register=True)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Manage Prisma connection lifecycle."""
-    await prisma.connect()
+    # Don't crash the whole service if the DB/query engine isn't reachable at startup.
+    # This keeps OPTIONS/preflight working (CORS headers) so the frontend can surface
+    # meaningful API errors instead of "service failed to respond".
+    try:
+        await prisma.connect()
+        app.state.prisma_connected = True
+    except Exception as e:
+        app.state.prisma_connected = False
+        logging.getLogger(__name__).exception("Prisma connect failed; starting app anyway.")
     yield
-    if prisma.is_connected():
+    if getattr(app.state, "prisma_connected", False) and prisma.is_connected():
         await prisma.disconnect()
 
 

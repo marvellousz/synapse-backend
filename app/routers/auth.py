@@ -7,6 +7,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from jose import JWTError, jwt
 
 from prisma.models import (
     Chat,
@@ -23,10 +24,11 @@ from prisma.models import (
     User,
 )
 
-from app.config import FRONTEND_BASE_URL
+from app.config import FRONTEND_BASE_URL, JWT_ALGORITHM, JWT_SECRET
 from app.core.auth import create_access_token, get_current_user, hash_password, verify_password
 from app.schemas.auth import (
     ChangePasswordRequest,
+    ConfirmDeleteAccountRequest,
     DeleteAccountRequest,
     ForgotPasswordRequest,
     Login,
@@ -40,6 +42,7 @@ from app.schemas.auth import (
 )
 from app.services.email_service import (
     EmailDeliveryError,
+    build_delete_account_email_html,
     build_reset_password_email_html,
     build_verify_email_html,
     send_email,
@@ -50,6 +53,7 @@ logger = logging.getLogger(__name__)
 
 
 TOKEN_TTL_HOURS = 24
+DELETE_ACCOUNT_TOKEN_TTL_MINUTES = 30
 
 
 def _normalize_email(email: str) -> str:
@@ -66,6 +70,10 @@ def _utcnow() -> datetime:
 
 def _expires_at() -> datetime:
     return _utcnow() + timedelta(hours=TOKEN_TTL_HOURS)
+
+
+def _delete_account_token_expires_at() -> datetime:
+    return _utcnow() + timedelta(minutes=DELETE_ACCOUNT_TOKEN_TTL_MINUTES)
 
 
 def _is_expired(expires_at: datetime) -> bool:
@@ -162,6 +170,23 @@ async def _send_password_reset_email(user: User) -> None:
         to_email=user.email,
         subject="reset your synapse password",
         html=build_reset_password_email_html(reset_url=reset_link),
+    )
+
+
+async def _send_delete_account_email(user: User) -> None:
+    payload = {
+        "sub": user.id,
+        "action": "delete_account",
+        "nonce": secrets.token_urlsafe(8),
+        "exp": _delete_account_token_expires_at(),
+    }
+    token = jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+    delete_link = f"{FRONTEND_BASE_URL}/delete-account?token={token}"
+
+    await send_email(
+        to_email=user.email,
+        subject="confirm your synapse account deletion",
+        html=build_delete_account_email_html(delete_url=delete_link),
     )
 
 
@@ -348,7 +373,48 @@ async def delete_account(
     if not verify_password(body.password, user.passwordHash):
         raise HTTPException(status_code=400, detail="Password is incorrect")
 
-    await _delete_user_data(user.id)
+    try:
+        await _send_delete_account_email(user)
+    except EmailDeliveryError as exc:
+        logger.exception("failed to send delete-account confirmation email for user_id=%s", user.id)
+        if exc.status_code == 403:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="Email provider rejected the sender configuration. Check RESEND_FROM_EMAIL domain/sender verification.",
+            )
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Could not send account deletion email right now. Please try again shortly.",
+        )
+    except Exception:
+        logger.exception("failed to send delete-account confirmation email for user_id=%s", user.id)
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Could not send account deletion email right now. Please try again shortly.",
+        )
+
+    return MessageResponse(
+        message="Confirmation email sent. Your account will be deleted after you confirm from your inbox.",
+    )
+
+
+@router.post("/confirm-delete-account", response_model=MessageResponse)
+async def confirm_delete_account(body: ConfirmDeleteAccountRequest) -> MessageResponse:
+    try:
+        payload = jwt.decode(body.token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+    except JWTError as exc:
+        raise HTTPException(status_code=400, detail="Invalid or expired deletion link") from exc
+
+    user_id = payload.get("sub")
+    action = payload.get("action")
+    if not user_id or action != "delete_account":
+        raise HTTPException(status_code=400, detail="Invalid or expired deletion link")
+
+    user = await User.prisma().find_unique(where={"id": user_id})
+    if not user:
+        raise HTTPException(status_code=400, detail="Invalid or expired deletion link")
+
+    await _delete_user_data(user_id)
     return MessageResponse(message="Account deleted.")
 
 

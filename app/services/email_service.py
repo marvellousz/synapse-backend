@@ -89,6 +89,16 @@ def build_reset_password_email_html(*, reset_url: str) -> str:
     )
 
 
+def build_delete_account_email_html(*, delete_url: str) -> str:
+    return _render_shell(
+        title="confirm account deletion",
+        intro="you requested to permanently delete your synapse account.",
+        cta_label="delete account",
+        cta_url=delete_url,
+        note="this deletion link expires in 30 minutes. if this was not you, ignore this email.",
+    )
+
+
 async def send_email(*, to_email: str, subject: str, html: str) -> None:
     """Send an email via Resend. No-op if Resend is not configured."""
     if not RESEND_API_KEY:

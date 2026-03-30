@@ -32,6 +32,10 @@ class DeleteAccountRequest(BaseModel):
     password: str
 
 
+class ConfirmDeleteAccountRequest(BaseModel):
+    token: str
+
+
 class VerifyEmailRequest(BaseModel):
     token: str
 

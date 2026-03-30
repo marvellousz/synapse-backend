@@ -39,6 +39,7 @@ from app.schemas.auth import (
     VerifyEmailRequest,
 )
 from app.services.email_service import (
+    EmailDeliveryError,
     build_reset_password_email_html,
     build_verify_email_html,
     send_email,
@@ -84,22 +85,13 @@ def _user_response(user: User) -> UserResponse:
 
 
 async def _delete_user_data(user_id: str) -> None:
-    memory_rows = await Memory.prisma().find_many(
-        where={"userId": user_id},
-        select={"id": True},
-    )
+    memory_rows = await Memory.prisma().find_many(where={"userId": user_id})
     memory_ids = [row.id for row in memory_rows]
 
-    space_rows = await Space.prisma().find_many(
-        where={"userId": user_id},
-        select={"id": True},
-    )
+    space_rows = await Space.prisma().find_many(where={"userId": user_id})
     space_ids = [row.id for row in space_rows]
 
-    chat_rows = await Chat.prisma().find_many(
-        where={"userId": user_id},
-        select={"id": True},
-    )
+    chat_rows = await Chat.prisma().find_many(where={"userId": user_id})
     chat_ids = [row.id for row in chat_rows]
 
     if chat_ids:
@@ -249,8 +241,23 @@ async def resend_verification(body: ResendVerificationRequest) -> MessageRespons
     if user and user.emailVerifiedAt is None:
         try:
             await _send_verification_email(user)
+        except EmailDeliveryError as exc:
+            logger.exception("failed to resend verification email for user_id=%s", user.id)
+            if exc.status_code == 403:
+                raise HTTPException(
+                    status_code=status.HTTP_502_BAD_GATEWAY,
+                    detail="Email provider rejected the sender configuration. Check RESEND_FROM_EMAIL domain/sender verification.",
+                )
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="Could not send verification email right now. Please try again shortly.",
+            )
         except Exception:
             logger.exception("failed to resend verification email for user_id=%s", user.id)
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="Could not send verification email right now. Please try again shortly.",
+            )
 
     return MessageResponse(message="If that email exists, a verification link has been sent.")
 
@@ -263,8 +270,23 @@ async def forgot_password(body: ForgotPasswordRequest) -> MessageResponse:
     if user:
         try:
             await _send_password_reset_email(user)
+        except EmailDeliveryError as exc:
+            logger.exception("failed to send password reset email for user_id=%s", user.id)
+            if exc.status_code == 403:
+                raise HTTPException(
+                    status_code=status.HTTP_502_BAD_GATEWAY,
+                    detail="Email provider rejected the sender configuration. Check RESEND_FROM_EMAIL domain/sender verification.",
+                )
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="Could not send reset email right now. Please try again shortly.",
+            )
         except Exception:
             logger.exception("failed to send password reset email for user_id=%s", user.id)
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="Could not send reset email right now. Please try again shortly.",
+            )
 
     return MessageResponse(message="If that email exists, a reset link has been sent.")
 

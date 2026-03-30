@@ -12,6 +12,15 @@ logger = logging.getLogger(__name__)
 RESEND_API_URL = "https://api.resend.com/emails"
 
 
+class EmailDeliveryError(Exception):
+    """Raised when email delivery provider rejects or fails a request."""
+
+    def __init__(self, message: str, *, status_code: int | None = None, response_body: str | None = None):
+        super().__init__(message)
+        self.status_code = status_code
+        self.response_body = response_body
+
+
 def _render_shell(*, title: str, intro: str, cta_label: str, cta_url: str, note: str) -> str:
     safe_title = escape(title)
     safe_intro = escape(intro)
@@ -98,5 +107,22 @@ async def send_email(*, to_email: str, subject: str, html: str) -> None:
     }
 
     async with httpx.AsyncClient(timeout=15.0) as client:
-        response = await client.post(RESEND_API_URL, headers=headers, json=payload)
-        response.raise_for_status()
+        try:
+            response = await client.post(RESEND_API_URL, headers=headers, json=payload)
+        except httpx.HTTPError as exc:
+            raise EmailDeliveryError("Email provider request failed") from exc
+
+        if response.status_code >= 400:
+            body_preview = response.text[:500]
+            logger.error(
+                "Resend rejected email (status=%s, to=%s, from=%s): %s",
+                response.status_code,
+                to_email,
+                RESEND_FROM_EMAIL,
+                body_preview,
+            )
+            raise EmailDeliveryError(
+                "Email provider rejected request",
+                status_code=response.status_code,
+                response_body=body_preview,
+            )

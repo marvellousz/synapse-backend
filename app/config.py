@@ -65,16 +65,3 @@ EXTRACTION_SUMMARY_MAX_CHARS = int(os.getenv("EXTRACTION_SUMMARY_MAX_CHARS", "12
 
 # OCR: optional explicit path to Tesseract binary (useful on Windows)
 TESSERACT_CMD = os.getenv("TESSERACT_CMD", "").strip()
-
-# YouTube transcript (youtube-transcript-api): cloud IPs are often blocked; use a rotating residential proxy.
-# Option A — Webshare (see library README "Working around IP bans"):
-YOUTUBE_TRANSCRIPT_WEBSHARE_USERNAME = os.getenv("YOUTUBE_TRANSCRIPT_WEBSHARE_USERNAME", "").strip()
-YOUTUBE_TRANSCRIPT_WEBSHARE_PASSWORD = os.getenv("YOUTUBE_TRANSCRIPT_WEBSHARE_PASSWORD", "").strip()
-# Comma-separated ISO country codes, e.g. "de,us" (optional)
-_raw_yt_loc = os.getenv("YOUTUBE_TRANSCRIPT_WEBSHARE_FILTER_LOCATIONS", "").strip()
-YOUTUBE_TRANSCRIPT_WEBSHARE_FILTER_LOCATIONS = [
-    x.strip().lower() for x in _raw_yt_loc.split(",") if x.strip()
-]
-# Option B — generic HTTP/HTTPS proxy URLs (e.g. http://user:pass@host:port)
-YOUTUBE_TRANSCRIPT_HTTP_PROXY = os.getenv("YOUTUBE_TRANSCRIPT_HTTP_PROXY", "").strip()
-YOUTUBE_TRANSCRIPT_HTTPS_PROXY = os.getenv("YOUTUBE_TRANSCRIPT_HTTPS_PROXY", "").strip()

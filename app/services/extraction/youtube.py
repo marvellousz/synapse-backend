@@ -2,7 +2,7 @@
 
 import logging
 import re
-from typing import Optional
+from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +28,50 @@ def extract_video_id(url: str) -> Optional[str]:
     return m.group(1) if m else None
 
 
+def _youtube_transcript_api_client():
+    """
+    Build YouTubeTranscriptApi with optional proxy (cloud / datacenter IPs are often blocked by YouTube).
+    See: https://github.com/jdepoix/youtube-transcript-api#working-around-ip-bans-requestblocked-or-ipblocked-exception
+    """
+    from youtube_transcript_api import YouTubeTranscriptApi
+
+    try:
+        from youtube_transcript_api.proxies import GenericProxyConfig, WebshareProxyConfig
+    except ImportError:
+        logger.warning(
+            "youtube-transcript-api has no proxies module; upgrade the package to use YOUTUBE_TRANSCRIPT_* proxy env vars."
+        )
+        return YouTubeTranscriptApi()
+
+    from app.config import (
+        YOUTUBE_TRANSCRIPT_HTTP_PROXY,
+        YOUTUBE_TRANSCRIPT_HTTPS_PROXY,
+        YOUTUBE_TRANSCRIPT_WEBSHARE_FILTER_LOCATIONS,
+        YOUTUBE_TRANSCRIPT_WEBSHARE_PASSWORD,
+        YOUTUBE_TRANSCRIPT_WEBSHARE_USERNAME,
+    )
+
+    if YOUTUBE_TRANSCRIPT_WEBSHARE_USERNAME and YOUTUBE_TRANSCRIPT_WEBSHARE_PASSWORD:
+        kw: dict[str, Any] = {
+            "proxy_username": YOUTUBE_TRANSCRIPT_WEBSHARE_USERNAME,
+            "proxy_password": YOUTUBE_TRANSCRIPT_WEBSHARE_PASSWORD,
+        }
+        if YOUTUBE_TRANSCRIPT_WEBSHARE_FILTER_LOCATIONS:
+            kw["filter_ip_locations"] = YOUTUBE_TRANSCRIPT_WEBSHARE_FILTER_LOCATIONS
+        logger.info("YouTube transcript: using Webshare proxy config")
+        return YouTubeTranscriptApi(proxy_config=WebshareProxyConfig(**kw))
+
+    if YOUTUBE_TRANSCRIPT_HTTP_PROXY or YOUTUBE_TRANSCRIPT_HTTPS_PROXY:
+        http_url = YOUTUBE_TRANSCRIPT_HTTP_PROXY or YOUTUBE_TRANSCRIPT_HTTPS_PROXY
+        https_url = YOUTUBE_TRANSCRIPT_HTTPS_PROXY or YOUTUBE_TRANSCRIPT_HTTP_PROXY
+        logger.info("YouTube transcript: using generic HTTP/HTTPS proxy config")
+        return YouTubeTranscriptApi(
+            proxy_config=GenericProxyConfig(http_url=http_url, https_url=https_url)
+        )
+
+    return YouTubeTranscriptApi()
+
+
 def extract_youtube_transcript(url: str) -> tuple[str, Optional[float]]:
     """
     Fetch YouTube transcript for the given video URL.
@@ -38,9 +82,7 @@ def extract_youtube_transcript(url: str) -> tuple[str, Optional[float]]:
     if not video_id:
         return "", None
     try:
-        from youtube_transcript_api import YouTubeTranscriptApi
-
-        ytt_api = YouTubeTranscriptApi()
+        ytt_api = _youtube_transcript_api_client()
         fetched = ytt_api.fetch(video_id)
         if not fetched:
             return "", None

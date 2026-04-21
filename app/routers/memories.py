@@ -91,14 +91,19 @@ async def get_memory_graph(
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> dict:
     """
-    Returns nodes (memories) and edges (shared tags) for the knowledge graph.
+    Returns nodes (memories) and edges (shared tags + semantic similarity) for the knowledge graph.
     """
     memories = await PrismaMemory.prisma().find_many(
         where={"userId": current_user.id},
-        include={"tags": {"include": {"tag": True}}},
+        include={"tags": {"include": {"tag": True}}, "embeddings": True},
     )
     
+    from app.services.search_service import _deserialize_vector
+    from app.services.extraction.embedding import cosine_similarity
+
     nodes = []
+    memory_embeddings = {}
+    
     for m in memories:
         nodes.append({
             "id": m.id,
@@ -108,18 +113,62 @@ async def get_memory_graph(
             "tags": [mt.tag.name for mt in m.tags] if m.tags else [],
         })
         
-    # Create links based on shared tags
+        # Calculate average embedding for the memory
+        if m.embeddings:
+            vectors = []
+            for emb in m.embeddings:
+                v = _deserialize_vector(emb.vector)
+                if v:
+                    vectors.append(v)
+            
+            if vectors:
+                # Average pooling
+                avg_vec = [sum(x) / len(vectors) for x in zip(*vectors)]
+                memory_embeddings[m.id] = avg_vec
+        
+    # Create links
     links = []
+    # Use a set to avoid duplicate links
+    seen_links = set()
+    
     for i in range(len(nodes)):
+        id_i = nodes[i]["id"]
+        tags_i = set(nodes[i]["tags"])
+        emb_i = memory_embeddings.get(id_i)
+        
         for j in range(i + 1, len(nodes)):
-            shared_tags = set(nodes[i]["tags"]) & set(nodes[j]["tags"])
+            id_j = nodes[j]["id"]
+            tags_j = set(nodes[j]["tags"])
+            emb_j = memory_embeddings.get(id_j)
+            
+            # 1. Shared tags links
+            shared_tags = tags_i & tags_j
             if shared_tags:
                 links.append({
-                    "source": nodes[i]["id"],
-                    "target": nodes[j]["id"],
-                    "value": len(shared_tags),
+                    "source": id_i,
+                    "target": id_j,
+                    "value": len(shared_tags) * 2, # Higher weight for tags
                     "sharedTags": list(shared_tags),
+                    "type": "tag"
                 })
+                seen_links.add(tuple(sorted((id_i, id_j))))
+            
+            # 2. Semantic similarity links
+            if emb_i and emb_j:
+                similarity = cosine_similarity(emb_i, emb_j)
+                # Only add if high similarity and not already linked by tags (to avoid clutter)
+                # or if we want to show both, we can distinguish them
+                if similarity > 0.85: # High threshold for automatic links
+                    pair = tuple(sorted((id_i, id_j)))
+                    if pair not in seen_links:
+                        links.append({
+                            "source": id_i,
+                            "target": id_j,
+                            "value": similarity * 5,
+                            "similarity": round(similarity, 3),
+                            "type": "semantic"
+                        })
+                        seen_links.add(pair)
                 
     return {"nodes": nodes, "links": links}
 

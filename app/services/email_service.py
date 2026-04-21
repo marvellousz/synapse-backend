@@ -71,11 +71,11 @@ def _render_shell(*, title: str, intro: str, cta_label: str, cta_url: str, note:
 
 def build_verify_email_html(*, verify_url: str) -> str:
     return _render_shell(
-        title="verify your synapse email",
-        intro="you are one click away from unlocking your second brain.",
-        cta_label="verify email",
+        title="Welcome to Synapse",
+        intro="We are excited to have you! Please confirm your email address to get started.",
+        cta_label="Confirm Email",
         cta_url=verify_url,
-        note="this verification link expires in 24 hours.",
+        note="This confirmation link expires in 24 hours.",
     )
 
 

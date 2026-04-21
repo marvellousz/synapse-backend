@@ -519,7 +519,7 @@ async def get_related_memories(
                     pass
 
         # Find similar embeddings
-        similar = find_similar_embeddings(avg_embedding, all_embeddings, top_k=limit * 3, threshold=0.4)
+        similar = find_similar_embeddings(avg_embedding, all_embeddings, top_k=limit * 3, threshold=0.75)
 
         # Group by memory and take best
         results_by_memory = {}

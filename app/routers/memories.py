@@ -141,9 +141,9 @@ async def get_memory_graph(
             tags_j = set(nodes[j]["tags"])
             emb_j = memory_embeddings.get(id_j)
             
-            # 1. Shared tags links
+            # 1. Shared tags links (require at least 2 shared tags to avoid weak connections)
             shared_tags = tags_i & tags_j
-            if shared_tags:
+            if len(shared_tags) >= 2:  # Require 2+ shared tags for connection
                 links.append({
                     "source": id_i,
                     "target": id_j,
@@ -158,7 +158,7 @@ async def get_memory_graph(
                 similarity = cosine_similarity(emb_i, emb_j)
                 # Only add if high similarity and not already linked by tags (to avoid clutter)
                 # or if we want to show both, we can distinguish them
-                if similarity > 0.85: # High threshold for automatic links
+                if similarity > 0.90: # High threshold for automatic links
                     pair = tuple(sorted((id_i, id_j)))
                     if pair not in seen_links:
                         links.append({

@@ -143,7 +143,7 @@ async def _send_verification_email(user: User) -> None:
     verify_link = f"{FRONTEND_BASE_URL}/verify-email?token={token}"
     await send_email(
         to_email=user.email,
-        subject="verify your synapse email",
+        subject="Welcome to Synapse - Action Required",
         html=build_verify_email_html(verify_url=verify_link),
     )
 
@@ -227,9 +227,14 @@ async def login(body: Login) -> Token:
             detail="Invalid email or password",
         )
     if user.emailVerifiedAt is None:
+        try:
+            await _send_verification_email(user)
+        except Exception:
+            logger.exception("failed to auto-resend verification email for user_id=%s", user.id)
+            
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Please verify your email before logging in",
+            detail="Please verify your email before logging in. A new verification link has been sent.",
         )
     token = create_access_token(user.id)
     return Token(access_token=token)

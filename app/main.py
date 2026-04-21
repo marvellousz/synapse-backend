@@ -84,7 +84,7 @@ async def root():
 if STORAGE_BACKEND == "local":
 
     @app.get("/files/{path:path}")
-    async def serve_upload(path: str):
+    async def serve_upload(path: str, download: bool = False):
         """Serve files from local uploads directory. Path must be under uploads root."""
         path = path.lstrip("/").replace("..", "")
         full_path = (LOCAL_STORAGE_PATH / path).resolve()
@@ -92,4 +92,15 @@ if STORAGE_BACKEND == "local":
             return PlainTextResponse("Forbidden", status_code=403)
         if not full_path.is_file():
             return PlainTextResponse("Not Found", status_code=404)
-        return FileResponse(full_path)
+        
+        import mimetypes
+        media_type, _ = mimetypes.guess_type(str(full_path))
+        if str(full_path).lower().endswith('.pdf'):
+            media_type = "application/pdf"
+            
+        disposition = "attachment" if download else "inline"
+        return FileResponse(
+            full_path, 
+            media_type=media_type, 
+            content_disposition_type=disposition
+        )

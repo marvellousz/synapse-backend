@@ -63,7 +63,13 @@ async def upload_files(
         if err or file_type is None:
             raise HTTPException(status_code=400, detail=err or "Unsupported file type")
         unique_id = uuid.uuid4().hex[:12]
-        key = storage.key_for_user_memory(current_user.id, memory_id, upload_file.filename, unique_id)
+        key = storage.key_for_user_memory(
+            current_user.id,
+            memory_id,
+            memory.category,
+            upload_file.filename,
+            unique_id,
+        )
         try:
             file_url = await storage.upload(content, key, content_type=content_type)
         except Exception as e:

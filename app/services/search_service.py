@@ -524,16 +524,25 @@ async def get_related_memories(
         # Group by memory and take best
         results_by_memory = {}
         for match in similar:
-            mem_id = match.get("id")
+            mem_id = match.get("memoryId")
             if mem_id not in results_by_memory:
                 # Find memory in user_memories
                 for mem in user_memories:
-                    if mem.id == match.get("memoryId"):
+                    if mem.id == mem_id:
                         results_by_memory[mem_id] = {
-                            "memoryId": mem.id,
-                            "title": mem.title or "Untitled",
-                            "similarity": match["similarity"],
+                            "id": mem.id,
+                            "userId": mem.userId,
                             "type": mem.type,
+                            "title": mem.title,
+                            "summary": mem.summary,
+                            "extractedText": mem.extractedText,
+                            "sourceUrl": mem.sourceUrl,
+                            "contentHash": mem.contentHash,
+                            "category": mem.category,
+                            "status": mem.status,
+                            "createdAt": mem.createdAt.isoformat(),
+                            "updatedAt": mem.updatedAt.isoformat(),
+                            "similarity": match["similarity"],
                         }
                         break
 

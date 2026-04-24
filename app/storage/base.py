@@ -1,6 +1,7 @@
 """Abstract storage backend."""
 
 from abc import ABC, abstractmethod
+from datetime import datetime, timezone
 
 
 class StorageBackend(ABC):
@@ -33,11 +34,16 @@ class StorageBackend(ABC):
         self,
         user_id: str,
         memory_id: str,
+        category: str | None,
         filename: str,
         unique_id: str,
     ) -> str:
-        """Build user-scoped storage key: user_id/memory_id/unique_id_filename."""
+        """Build user-scoped storage key with category/date path segments."""
         safe_name = "".join(c for c in filename if c.isalnum() or c in "._-")[:64]
         safe_user = "".join(c for c in user_id if c.isalnum() or c in "-_")[:64]
         safe_memory = "".join(c for c in memory_id if c.isalnum() or c in "-_")[:64]
-        return f"{safe_user}/{safe_memory}/{unique_id}_{safe_name}"
+        safe_category = "".join(c for c in (category or "") if c.isalnum() or c in "-_").lower()[:64]
+        if not safe_category:
+            safe_category = "uncategorized"
+        date_folder = datetime.now(timezone.utc).strftime("%Y/%m/%d")
+        return f"{safe_user}/{safe_memory}/{safe_category}/{date_folder}/{unique_id}_{safe_name}"

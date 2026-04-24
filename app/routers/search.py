@@ -50,10 +50,19 @@ class KeywordSearchQuery(BaseModel):
 class RelatedMemoriesResponse(BaseModel):
     """Related memories result."""
 
-    memoryId: str
-    title: str
-    similarity: float
+    id: str
+    userId: str
     type: str
+    title: str | None
+    summary: str | None
+    extractedText: str | None
+    sourceUrl: str | None
+    contentHash: str
+    category: str | None
+    status: str
+    createdAt: str
+    updatedAt: str
+    similarity: float
 
 
 @router.post("/semantic")

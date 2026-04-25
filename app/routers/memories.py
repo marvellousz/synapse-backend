@@ -91,8 +91,11 @@ async def get_memory_graph(
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> dict:
     """
-    Returns nodes (memories) and edges (shared tags + semantic similarity) for the knowledge graph.
+    Returns nodes (memories) and edges (same category) for the knowledge graph.
     """
+    MIN_SHARED_TAGS = 2
+    MIN_SEMANTIC_SIMILARITY = 0.85
+
     memories = await PrismaMemory.prisma().find_many(
         where={"userId": current_user.id},
         include={"tags": {"include": {"tag": True}}, "embeddings": True},
@@ -133,42 +136,29 @@ async def get_memory_graph(
     
     for i in range(len(nodes)):
         id_i = nodes[i]["id"]
+        category_i = nodes[i]["category"]
         tags_i = set(nodes[i]["tags"])
         emb_i = memory_embeddings.get(id_i)
         
         for j in range(i + 1, len(nodes)):
             id_j = nodes[j]["id"]
+            category_j = nodes[j]["category"]
             tags_j = set(nodes[j]["tags"])
             emb_j = memory_embeddings.get(id_j)
-            
-            # 1. Shared tags links (require at least 2 shared tags to avoid weak connections)
-            shared_tags = tags_i & tags_j
-            if len(shared_tags) >= 2:  # Require 2+ shared tags for connection
-                links.append({
-                    "source": id_i,
-                    "target": id_j,
-                    "value": len(shared_tags) * 2, # Higher weight for tags
-                    "sharedTags": list(shared_tags),
-                    "type": "tag"
-                })
-                seen_links.add(tuple(sorted((id_i, id_j))))
-            
-            # 2. Semantic similarity links
-            if emb_i and emb_j:
-                similarity = cosine_similarity(emb_i, emb_j)
-                # Only add if high similarity and not already linked by tags (to avoid clutter)
-                # or if we want to show both, we can distinguish them
-                if similarity > 0.90: # High threshold for automatic links
-                    pair = tuple(sorted((id_i, id_j)))
-                    if pair not in seen_links:
-                        links.append({
-                            "source": id_i,
-                            "target": id_j,
-                            "value": similarity * 5,
-                            "similarity": round(similarity, 3),
-                            "type": "semantic"
-                        })
-                        seen_links.add(pair)
+
+            # 0. Same-category links get first priority.
+            if category_i != category_j:
+                continue
+
+            links.append({
+                "source": id_i,
+                "target": id_j,
+                "value": 3,
+                "category": category_i,
+                "type": "category",
+            })
+            seen_links.add(tuple(sorted((id_i, id_j))))
+            continue
                 
     return {"nodes": nodes, "links": links}
 

@@ -47,6 +47,7 @@ class ChatUpdate(BaseModel):
 
 class SendMessageIn(BaseModel):
     message: str = Field(..., min_length=1)
+    useInternet: bool = Field(default=False)
 
 
 class SendMessageOut(BaseModel):
@@ -158,6 +159,7 @@ async def send_message(
         user_id=current_user.id,
         message=body.message.strip(),
         history=history,
+        use_internet=body.useInternet,
     )
 
     user_msg = await PrismaChatMessage.prisma().create(

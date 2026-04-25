@@ -22,6 +22,7 @@ class ChatRequest(BaseModel):
 
     message: str = Field(..., min_length=1, description="Latest user message")
     history: list[ChatMessage] = Field(default_factory=list, description="Previous messages (optional)")
+    useInternet: bool = Field(default=False, description="Whether to include web context")
 
 
 class ChatResponse(BaseModel):
@@ -50,5 +51,6 @@ async def chat_endpoint(
         user_id=current_user.id,
         message=body.message.strip(),
         history=history,
+        use_internet=body.useInternet,
     )
     return ChatResponse(reply=reply)
